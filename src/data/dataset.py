@@ -339,23 +339,24 @@ class MultiDatasetLoader:
             replacement=True,
         )
 
+        pin_memory = torch.cuda.is_available()
         train_loader = DataLoader(
             train_ds, batch_size=self.batch_size,
             sampler=sampler, num_workers=self.num_workers,
-            pin_memory=True, drop_last=True,
+            pin_memory=pin_memory, drop_last=True,
         )
         val_loader = DataLoader(
             val_ds, batch_size=self.batch_size,
             shuffle=False, num_workers=self.num_workers,
-            pin_memory=True,
+            pin_memory=pin_memory,
         )
         test_loader = DataLoader(
             test_ds, batch_size=self.batch_size,
             shuffle=False, num_workers=self.num_workers,
-            pin_memory=True,
+            pin_memory=pin_memory,
         )
 
-        print(f"Dataset splits — Train: {len(train_ds)}, "
+        print(f"Dataset splits - Train: {len(train_ds)}, "
               f"Val: {len(val_ds)}, Test: {len(test_ds)}")
         print(f"Train class distribution: {dict(zip(['Real', 'Fake'], train_class_counts))}")
 

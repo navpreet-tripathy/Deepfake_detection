@@ -111,24 +111,31 @@ class Trainer:
         )
 
         # Scheduler: linear warmup → cosine annealing
-        warmup_epochs = config.get("warmup_epochs", 3)
         total_epochs = config.get("epochs", 50)
-        warmup_scheduler = LinearLR(
-            self.optimizer,
-            start_factor=0.01,
-            end_factor=1.0,
-            total_iters=warmup_epochs,
-        )
-        cosine_scheduler = CosineAnnealingLR(
-            self.optimizer,
-            T_max=total_epochs - warmup_epochs,
-            eta_min=1e-6,
-        )
-        self.scheduler = SequentialLR(
-            self.optimizer,
-            schedulers=[warmup_scheduler, cosine_scheduler],
-            milestones=[warmup_epochs],
-        )
+        warmup_epochs = min(config.get("warmup_epochs", 3), max(0, total_epochs - 1))
+        if warmup_epochs > 0 and total_epochs > warmup_epochs:
+            warmup_scheduler = LinearLR(
+                self.optimizer,
+                start_factor=0.01,
+                end_factor=1.0,
+                total_iters=warmup_epochs,
+            )
+            cosine_scheduler = CosineAnnealingLR(
+                self.optimizer,
+                T_max=max(1, total_epochs - warmup_epochs),
+                eta_min=1e-6,
+            )
+            self.scheduler = SequentialLR(
+                self.optimizer,
+                schedulers=[warmup_scheduler, cosine_scheduler],
+                milestones=[warmup_epochs],
+            )
+        else:
+            self.scheduler = CosineAnnealingLR(
+                self.optimizer,
+                T_max=max(1, total_epochs),
+                eta_min=1e-6,
+            )
 
         # Loss function
         self.criterion = nn.CrossEntropyLoss()
@@ -175,7 +182,7 @@ class Trainer:
         }
 
         print(f"\n{'='*60}")
-        print(f"  ODD²F Training — {epochs} epochs")
+        print(f"  ODD2F Training - {epochs} epochs")
         print(f"  Device: {self.device}")
         print(f"  AMP: {self.use_amp} | CutMix: {self.use_cutmix}")
         print(f"  Parameters: {sum(p.numel() for p in self.model.parameters()):,}")
@@ -184,23 +191,23 @@ class Trainer:
         for epoch in range(1, epochs + 1):
             t0 = time.time()
 
-            # ── Train ──
+            # -- Train --
             train_loss, train_acc = self._train_epoch(epoch)
 
-            # ── Validate ──
+            # -- Validate --
             val_loss, val_acc, val_auc = self._validate_epoch()
 
-            # ── LR step ──
+            # -- LR step --
             current_lr = self.optimizer.param_groups[0]["lr"]
             self.scheduler.step()
 
-            # ── Log ──
+            # -- Log --
             elapsed = time.time() - t0
             print(
-                f"Epoch {epoch:3d}/{epochs} │ "
-                f"Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} │ "
-                f"Val Loss: {val_loss:.4f} Acc: {val_acc:.4f} AUC: {val_auc:.4f} │ "
-                f"LR: {current_lr:.2e} │ {elapsed:.1f}s"
+                f"Epoch {epoch:3d}/{epochs} | "
+                f"Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | "
+                f"Val Loss: {val_loss:.4f} Acc: {val_acc:.4f} AUC: {val_auc:.4f} | "
+                f"LR: {current_lr:.2e} | {elapsed:.1f}s"
             )
 
             self.writer.add_scalars("Loss", {"train": train_loss, "val": val_loss}, epoch)
@@ -215,22 +222,22 @@ class Trainer:
             history["val_auc"].append(val_auc)
             history["lr"].append(current_lr)
 
-            # ── Best model checkpoint ──
+            # -- Best model checkpoint --
             if val_auc > self.best_val_auc:
                 self.best_val_auc = val_auc
                 self.best_model_state = copy.deepcopy(self.model.state_dict())
                 self._save_checkpoint(epoch, val_auc, is_best=True)
-                print(f"  ★ New best model saved (AUC: {val_auc:.4f})")
+                print(f"  [*] New best model saved (AUC: {val_auc:.4f})")
 
-            # ── Early stopping ──
+            # -- Early stopping --
             if self.early_stopping and self.early_stopping(val_auc):
-                print(f"\n  ⏹  Early stopping triggered at epoch {epoch}")
+                print(f"\n  [STOP] Early stopping triggered at epoch {epoch}")
                 break
 
         # Restore best model
         if self.best_model_state is not None:
             self.model.load_state_dict(self.best_model_state)
-            print(f"\n  ✓ Restored best model (AUC: {self.best_val_auc:.4f})")
+            print(f"\n  [OK] Restored best model (AUC: {self.best_val_auc:.4f})")
 
         self.writer.close()
         return history

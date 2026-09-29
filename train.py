@@ -80,6 +80,10 @@ def parse_args():
         help="Disable ImageNet pretrained weights.",
     )
     parser.add_argument(
+        "--num_workers", type=int, default=None,
+        help="Override: number of data loader workers.",
+    )
+    parser.add_argument(
         "--resume", type=str, default=None,
         help="Path to checkpoint to resume training from.",
     )
@@ -103,6 +107,8 @@ def main():
         training_cfg["batch_size"] = args.batch_size
     if args.lr is not None:
         training_cfg["learning_rate"] = args.lr
+    if args.num_workers is not None:
+        training_cfg["num_workers"] = args.num_workers
     if args.no_pretrained:
         model_cfg["pretrained"] = False
 
@@ -120,7 +126,7 @@ def main():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"\n{'='*60}")
-    print(f"  ODD²F Training")
+    print(f"  ODD2F Training")
     print(f"{'='*60}")
     print(f"  Device:     {device}")
     print(f"  Epochs:     {training_cfg.get('epochs', 50)}")
@@ -237,9 +243,9 @@ def main():
         plt.close(fig)
         print(f"  Training curves saved to {plot_path}")
     except Exception as e:
-        print(f"  ⚠ Could not plot training curves: {e}")
+        print(f"  [!] Could not plot training curves: {e}")
 
-    print(f"\n  ✓ Training complete! Best model at {save_dir}/best_model.pth")
+    print(f"\n  [OK] Training complete! Best model at {save_dir}/best_model.pth")
 
 
 if __name__ == "__main__":

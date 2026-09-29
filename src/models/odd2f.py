@@ -47,6 +47,12 @@ class StreamEncoder(nn.Module):
             global_pool="",         # disable global pool — we want spatial maps
         )
 
+        # In timm>=1.0, MobileNetV3-Large forward_features() runs conv_head
+        # (960→1280) before returning. We strip it to get the correct 960-d
+        # spatial feature maps that the CBAM and config expect.
+        self.backbone.conv_head = nn.Identity()
+        self.backbone.act2 = nn.Identity()
+
         # CBAM attention on the feature maps
         self.cbam = CBAM(
             channels=feature_dim,
@@ -307,15 +313,19 @@ class NoCBAMModel(nn.Module):
                  dropout=0.3, num_classes=2):
         super().__init__()
 
-        # Backbones without CBAM
+        # Backbones without CBAM — strip conv_head to get 960-d features
         self.rgb_backbone = timm.create_model(
             "mobilenetv3_large_100", pretrained=pretrained,
             num_classes=0, global_pool="",
         )
+        self.rgb_backbone.conv_head = nn.Identity()
+        self.rgb_backbone.act2 = nn.Identity()
         self.ela_backbone = timm.create_model(
             "mobilenetv3_large_100", pretrained=pretrained,
             num_classes=0, global_pool="",
         )
+        self.ela_backbone.conv_head = nn.Identity()
+        self.ela_backbone.act2 = nn.Identity()
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Sequential(
             nn.Linear(feature_dim * 2, fusion_dim),

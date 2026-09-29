@@ -52,6 +52,10 @@ def parse_args():
         help="Export model to ONNX and TFLite.",
     )
     parser.add_argument(
+        "--num_workers", type=int, default=0,
+        help="Number of data loader workers (default 0).",
+    )
+    parser.add_argument(
         "--save_dir", type=str, default="results",
         help="Directory to save evaluation results.",
     )
@@ -100,11 +104,11 @@ def main():
     model.to(device)
     model.eval()
 
-    print(f"\n  ✓ Model loaded from {args.checkpoint}")
+    print(f"\n  [OK] Model loaded from {args.checkpoint}")
     print(f"    Checkpoint epoch: {checkpoint.get('epoch', '?')}")
     print(f"    Checkpoint AUC:   {checkpoint.get('val_auc', '?')}")
 
-    # ── Dataset ──
+    # -- Dataset --
     if args.data_root:
         dataset_configs = [{"name": "custom", "root": args.data_root}]
     else:
@@ -117,7 +121,7 @@ def main():
         ela_quality=ela_cfg.get("quality", 95),
         ela_scale=ela_cfg.get("scale", 20),
         batch_size=training_cfg.get("batch_size", 32),
-        num_workers=training_cfg.get("num_workers", 4),
+        num_workers=args.num_workers,
     )
 
     splits = loader.prepare_splits()
@@ -142,17 +146,17 @@ def main():
                 ds_test = ds_splits["test"]
                 evaluator.evaluate(ds_test, dataset_name=ds_cfg["name"])
             except Exception as e:
-                print(f"  ⚠ Skipping {ds_cfg['name']}: {e}")
+                print(f"  [!] Skipping {ds_cfg['name']}: {e}")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # 2. Ablation Study
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     if args.ablation:
         print(f"\n{'='*60}")
         print("  ABLATION STUDY")
         print(f"{'='*60}")
 
-        # Create ablation variants (initialized fresh — untrained)
+        # Create ablation variants (initialized fresh -- untrained)
         # In practice you'd train each variant separately, but for
         # comparison we load the full model and test variants.
         ablation_models = {
@@ -170,7 +174,7 @@ def main():
             rgb_model.to(device)
             ablation_models["RGB_Only"] = rgb_model
         except Exception as e:
-            print(f"  ⚠ RGB-only model setup failed: {e}")
+            print(f"  [!] RGB-only model setup failed: {e}")
 
         # ELA-only
         try:
@@ -182,7 +186,7 @@ def main():
             ela_model.to(device)
             ablation_models["ELA_Only"] = ela_model
         except Exception as e:
-            print(f"  ⚠ ELA-only model setup failed: {e}")
+            print(f"  [!] ELA-only model setup failed: {e}")
 
         # No-CBAM
         try:
@@ -193,7 +197,7 @@ def main():
             no_cbam.to(device)
             ablation_models["No_CBAM"] = no_cbam
         except Exception as e:
-            print(f"  ⚠ No-CBAM model setup failed: {e}")
+            print(f"  [!] No-CBAM model setup failed: {e}")
 
         ablation = AblationStudy(
             models=ablation_models,
@@ -202,9 +206,9 @@ def main():
         )
         ablation.run(save_dir=str(save_dir / "ablation"))
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # 3. Robustness Tests
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     if args.robustness:
         print(f"\n{'='*60}")
         print("  ROBUSTNESS TESTS")
@@ -219,9 +223,9 @@ def main():
         )
         robustness.run(save_dir=str(save_dir / "robustness"))
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # 4. Export
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     if args.export:
         print(f"\n{'='*60}")
         print("  MODEL EXPORT")
@@ -238,7 +242,7 @@ def main():
             tflite_path=str(export_dir / "odd2f.tflite"),
         )
 
-    print(f"\n  ✓ All evaluations complete. Results saved to {save_dir}/")
+    print(f"\n  [OK] All evaluations complete. Results saved to {save_dir}/")
 
 
 if __name__ == "__main__":
