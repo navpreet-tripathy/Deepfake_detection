@@ -95,6 +95,7 @@ Deepfake_detection/
 ├── test_dataset/                # 120 synthetic images (60 real, 60 fake) for dry-run verification
 ├── runs/                        # Checkpoints, Tensorboard logs, and training curves
 │   └── best_model.pth           # Verified model weights (ready for live inference)
+├── .gitignore                   # Excludes heavy checkpoints (*.pth), cache, and logs
 ├── requirements.txt             # Complete Python package dependency declarations
 ├── README.md                    # Project documentation & user guide
 └── PROJECT_HANDOVER_REPORT.md   # Complete project documentation and team handover report
@@ -104,6 +105,7 @@ Deepfake_detection/
 
 | File | Status | What Has Been Implemented |
 | :--- | :--- | :--- |
+| `.gitignore` | **Complete** | Standard Python / PyTorch ignore rules preventing repository bloat from 88MB `.pth` binaries, `__pycache__`, and temporary test run directories. |
 | `requirements.txt` | **Complete** | Defines PyTorch, torchvision, timm, Albumentations, scikit-learn, OpenCV, Streamlit, ONNX, TensorBoard, etc. |
 | `config/default.yaml` | **Complete** | Central YAML configuration covering datasets (140K Faces, CIFAKE, Celeb-DF), backbone hyperparameters, ELA quality (95) and scale (20), CutMix, Adam optimizer, cosine LR scheduler, warmup epochs, early stopping patience (7), and robustness testing specs. |
 | `src/preprocessing/ela.py` | **Complete** | `compute_ela()`, `compute_ela_pil()`, `compute_ela_heatmap()` with OpenCV JET colormap, and `overlay_ela_on_image()` with alpha blending. |
@@ -127,6 +129,7 @@ Deepfake_detection/
 - **Windows Console CP1252 Encoding:** Replaced Unicode box characters (`│`, `★`, `—`, `✓`) across `trainer.py`, `train.py`, `evaluate.py`, and `dataset.py` with standard ASCII to prevent `UnicodeEncodeError` crashes on Windows terminals.
 - **DataLoader & Multiprocessing Optimization:** Added `--num_workers` CLI arguments across drivers (defaulting to 0 on Windows for maximum speed and stability) and conditioned `pin_memory` on CUDA availability to eliminate unnecessary warnings.
 - **Scheduler Edge-Case Handling:** Updated `src/training/trainer.py` so that LR scheduling functions smoothly even for short test runs where `total_epochs <= warmup_epochs`.
+- **Repository Hygiene & `.gitignore`:** Added a comprehensive `.gitignore` so large model weight checkpoints (`*.pth`), virtual environments, dataset folders, and temporary logs are not pushed to GitHub, keeping the repository lightweight and within GitHub limits.
 
 ### ✅ 2. Verification Milestones Completed
 1. **Sanity Check:** Passed all package imports, model instantiation (~7.29M parameters), and forward pass tensor checks (`python sanity_check.py`).
